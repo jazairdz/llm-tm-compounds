@@ -1,0 +1,152 @@
+<div style="max-width: 680px; margin: 0 auto; font-family: var(--font-sans); padding: 1rem 0;">
+
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.05em;">Research notebook · Series A · Post 1</p>
+  <h1 style="font-size: 26px; font-weight: 500; margin: 0 0 0.5rem; font-family: var(--font-serif);">From DFT to data-driven</h1>
+  <p style="font-size: 17px; color: var(--color-text-secondary); margin: 0 0 1.5rem; line-height: 1.6;">Why I'm adding machine learning to my computational toolkit for 3d transition metal chalcogenides</p>
+
+  <div style="border-top: 0.5px solid var(--color-border-tertiary); border-bottom: 0.5px solid var(--color-border-tertiary); padding: 1rem 0; margin-bottom: 1.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+    <div><p style="font-size: 12px; color: var(--color-text-tertiary); margin: 0 0 2px;">Compounds modeled</p><p style="font-size: 20px; font-weight: 500; margin: 0;">MS / MSe / MTe</p></div>
+    <div><p style="font-size: 12px; color: var(--color-text-tertiary); margin: 0 0 2px;">d-electron range</p><p style="font-size: 20px; font-weight: 500; margin: 0;">d¹ – d⁹</p></div>
+    <div><p style="font-size: 12px; color: var(--color-text-tertiary); margin: 0 0 2px;">Method codes</p><p style="font-size: 20px; font-weight: 500; margin: 0;">8+ DFT</p></div>
+  </div>
+
+  <p style="font-size: 16px; line-height: 1.7;">I've spent years running first-principles calculations on 3d transition metal chalcogenides — accurate, but slow. A converged DFT+U run with proper magnetic configuration testing can take days. Over the years I've accumulated dozens of compounds' worth of results, and the trends across them are often more interesting than any single result.</p>
+
+  <p style="font-size: 16px; line-height: 1.7;">Why does one MTe compound open a gap while a structurally similar MSe doesn't? Why does magnetic ordering flip from antiferromagnetic to ferromagnetic when the M–X–M angle crosses some threshold? I know the qualitative physics — Goodenough-Kanamori-Anderson rules, crystal field theory, Zaanen-Sawatzky-Allen classification — but I've never had a systematic, quantitative cross-compound view.</p>
+
+  <h2 style="font-size: 18px; font-weight: 500; margin: 2rem 0 0.75rem;">Physics-informed, not black-box</h2>
+  <p style="font-size: 16px; line-height: 1.7;">A model that outputs "band gap = 0.8 eV" with no explanation is useless to me. So the approach: encode the descriptors I already trust — bond angles, crystal field splitting, d-electron count, electronegativity differences — as explicit features, then fit interpretable models I can check against the physics.</p>
+
+  <div style="margin: 2rem 0; padding: 1.25rem; background: var(--color-background-secondary); border-radius: var(--border-radius-lg);">
+    <h3 style="font-size: 15px; font-weight: 500; margin: 0 0 1rem;">Quick application — octahedral crystal field splitting</h3>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 1rem; line-height: 1.6;">A first descriptor every compound in the dataset will carry. Adjust the M–X bond length and d-electron count to see how the crystal field splitting Δ and resulting t₂g / eg occupation shift — the starting point for a band gap estimate.</p>
+
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <label style="font-size: 13px; color: var(--color-text-secondary); width: 110px;">M–X bond (Å)</label>
+      <input type="range" min="2.2" max="2.8" step="0.01" value="2.45" id="bond" style="flex: 1;" />
+      <span style="font-size: 13px; font-weight: 500; min-width: 40px;" id="bond-out">2.45</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+      <label style="font-size: 13px; color: var(--color-text-secondary); width: 110px;">d-electron count</label>
+      <input type="range" min="1" max="9" step="1" value="5" id="delectron" style="flex: 1;" />
+      <span style="font-size: 13px; font-weight: 500; min-width: 40px;" id="delectron-out">5</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 1rem;">
+      <div style="background: var(--color-background-primary); border-radius: var(--border-radius-md); padding: 0.75rem;">
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0 0 2px;">Δ (crystal field)</p>
+        <p style="font-size: 18px; font-weight: 500; margin: 0;" id="delta-out">– eV</p>
+      </div>
+      <div style="background: var(--color-background-primary); border-radius: var(--border-radius-md); padding: 0.75rem;">
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0 0 2px;">Spin state</p>
+        <p style="font-size: 18px; font-weight: 500; margin: 0;" id="spin-out">–</p>
+      </div>
+      <div style="background: var(--color-background-primary); border-radius: var(--border-radius-md); padding: 0.75rem;">
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0 0 2px;">Est. gap regime</p>
+        <p style="font-size: 18px; font-weight: 500; margin: 0;" id="gap-out">–</p>
+      </div>
+    </div>
+
+    <div style="position: relative; height: 160px;">
+      <canvas id="levelchart"></canvas>
+    </div>
+    <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 8px 0 0;">Illustrative scaling only — Δ ∝ 1/(M–X)⁵, high-spin/low-spin split estimated from Δ vs typical pairing energy. Real values come from DFT.</p>
+  </div>
+
+  <p style="font-size: 16px; line-height: 1.7;">This is the kind of descriptor that will feed the dataset built in the next post: pulled from my own DFT outputs where available, extracted from papers via LLM parsing, and cross-checked against Materials Project entries.</p>
+
+  <h2 style="font-size: 18px; font-weight: 500; margin: 2rem 0 0.75rem;">What this series will document</h2>
+  <p style="font-size: 16px; line-height: 1.7;">Build a unified dataset (own DFT + literature + Materials Project) → engineer physics-informed descriptors → look for structure → electronic relationships → then structure → magnetic → then the coupling between the two → symbolic regression for formula discovery → a rule bank for predicting unknown compounds.</p>
+
+  <p style="font-size: 16px; line-height: 1.7;">If it works, the payoff is concrete: faster screening of candidate MC compounds, better-targeted DFT calculations, and a few rules worth publishing alongside the usual first-principles results.</p>
+
+  <div style="margin-top: 2rem; display: flex; gap: 12px;">
+    <button onclick="sendPrompt('Write post 2: Building My First Compound Dataset')">Next post: building the dataset ↗</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+function update() {
+  const bond = parseFloat(document.getElementById('bond').value);
+  const d = parseInt(document.getElementById('delectron').value);
+  document.getElementById('bond-out').textContent = bond.toFixed(2);
+  document.getElementById('delectron-out').textContent = d;
+
+  const refBond = 2.45, refDelta = 1.5;
+  const delta = refDelta * Math.pow(refBond / bond, 5);
+  document.getElementById('delta-out').textContent = delta.toFixed(2) + ' eV';
+
+  const pairingEnergy = 1.6;
+  const highSpin = delta < pairingEnergy;
+  document.getElementById('spin-out').textContent = highSpin ? 'High spin' : 'Low spin';
+
+  let gapText, gapColor;
+  if (d === 0 || d === 10) { gapText = 'Wide gap'; }
+  else if ((d === 5 && highSpin) || d === 0 || d === 10) { gapText = 'Wide gap'; }
+  else if (delta > 2.2) { gapText = 'Narrow / metal'; }
+  else { gapText = 'Moderate gap'; }
+  document.getElementById('gap-out').textContent = gapText;
+
+  drawLevels(delta, d, highSpin);
+}
+
+let chart;
+function drawLevels(delta, d, highSpin) {
+  const ctx = document.getElementById('levelchart').getContext('2d');
+  const t2gE = -0.4 * delta;
+  const egE = 0.6 * delta;
+
+  let t2gOcc, egOcc;
+  if (highSpin) {
+    t2gOcc = Math.min(d, 3) + Math.max(0, d - 5);
+    egOcc = Math.max(0, Math.min(d - 3, 2)) + Math.max(0, d - 7) * 0;
+    if (d > 5) { egOcc = d - 5; t2gOcc = 3 + Math.max(0, d-5>0 ? (d-3-(d-5)) : 0); }
+    t2gOcc = Math.min(d,3) + Math.max(0,d-8);
+    egOcc = d - t2gOcc;
+  } else {
+    t2gOcc = Math.min(d, 6);
+    egOcc = Math.max(0, d - 6);
+  }
+
+  const data = {
+    datasets: [{
+      label: 'eg',
+      data: [{x:0.6, y:egE}, {x:1.4, y:egE}],
+      showLine: true,
+      borderColor: '#D85A30',
+      pointRadius: 0,
+      borderWidth: 3
+    },{
+      label: 't2g',
+      data: [{x:0.6, y:t2gE}, {x:1.4, y:t2gE}],
+      showLine: true,
+      borderColor: '#378ADD',
+      pointRadius: 0,
+      borderWidth: 3
+    }]
+  };
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: data,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: { min: 0, max: 2, display: false },
+        y: { min: -2, max: 2, ticks: { font: { size: 11 } }, title: { display: true, text: 'Energy (eV)', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+document.getElementById('bond').addEventListener('input', update);
+document.getElementById('delectron').addEventListener('input', update);
+update();
+</script>
